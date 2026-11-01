@@ -109,6 +109,7 @@ renderLearn=function(){const l=lesson(),complete=state.completed.includes(l.n),s
 function closeRoadmap(){const modal=$('#roadmapModal');if(modal)modal.remove()}
 openRoadmap=function(){closeRoadmap();document.body.insertAdjacentHTML('beforeend',`<div id="roadmapModal" class="quiz-modal" role="dialog" aria-modal="true" aria-labelledby="roadmapTitle"><div class="quiz-dialog"><div class="quiz-dialog-head"><h2 id="roadmapTitle">Endlicher Lernplan</h2><button class="modal-close" aria-label="Lernplan schließen" onclick="closeRoadmap()">×</button></div><p>Ein klarer Weg von A1 bis C1, danach Sätze und Gespräche.</p><ol class="roadmap">${roadmap.map(r=>`<li><strong>${r[0]}</strong><br><span class="meta">${r[1]}</span></li>`).join('')}</ol></div></div>`)}
 
+
 const grammarTranslations={
 1:{en:'Learn ich and du, and the most important forms of sein. Use them to introduce yourself and give simple information.',fa:'ضمیرهای ich و du و مهم‌ترین شکل‌های فعل sein را یاد می‌گیری. با آن‌ها می‌توانی خودت را معرفی کنی و اطلاعات ساده بدهی.'},
 2:{en:'Every noun has a gender: der, die, or das. In a simple sentence, the verb usually comes in the second position.',fa:'هر اسم یک جنس دستوری دارد: der، die یا das. در یک جمله ساده، فعل معمولاً در جایگاه دوم قرار می‌گیرد.'},
