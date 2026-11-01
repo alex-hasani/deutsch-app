@@ -126,3 +126,16 @@ Object.assign(grammarByLesson[5],{examples:[...grammarByLesson[5].examples,['Ich
 Object.assign(grammarByLesson[6],{examples:[...grammarByLesson[6].examples,['Die formulierte Frage ist eindeutig.','The formulated question is unambiguous.','سؤالِ بیان‌شده روشن است.'],['Die berücksichtigte Information hilft uns.','The information taken into account helps us.','اطلاعات در نظر گرفته‌شده به ما کمک می‌کند.']]});
 Object.assign(grammarByLesson[7],{examples:[...grammarByLesson[7].examples,['Könnten Sie bitte langsamer sprechen?','Could you please speak more slowly?','ممکن است لطفاً آهسته‌تر صحبت کنید؟'],['Ich würde gern mehr wissen.','I would like to know more.','مایلم بیشتر بدانم.']]});
 renderGrammar=function(){const g=grammarByLesson[current]||grammarByLesson[1],t=grammarTranslations[current]||grammarTranslations[1];$('#grammar').innerHTML=`<article class="card"><span class="tag">${lesson().level} · Grammatik zu Lektion ${current}</span><h2>${g.title}</h2><div class="grammar-explanation"><p><strong>Deutsch</strong><br>${escape(g.explanation)}</p><p><strong>English</strong><br>${escape(t.en)}</p><p class="fa"><strong>فارسی</strong><br>${escape(t.fa)}</p></div><h3>Beispiele</h3><table><thead><tr><th>Deutsch</th><th>English</th><th>فارسی</th></tr></thead><tbody>${g.examples.map(x=>`<tr><td><strong>${escape(x[0])}</strong> <button class="audio" onclick="speakText('${encodeURIComponent(x[0])}','de-DE')">🔊</button></td><td>${escape(x[1])} <button class="audio" onclick="speakText('${encodeURIComponent(x[1])}','en-US')">🔊</button></td><td class="fa">${escape(x[2])}</td></tr>`).join('')}</tbody></table><div class="grammar-explanation grammar-note"><p><strong>Deutsch</strong><br>Diese Grammatik gehört nur zur aktuellen Lektion.</p><p><strong>English</strong><br>This grammar belongs only to the current lesson.</p><p class="fa"><strong>فارسی</strong><br>این گرامر فقط مربوط به درس فعلی است.</p></div></article>`}
+
+// Load the expanded original course without changing the app's screens or interactions.
+if(window.DEUTSCH_CURRICULUM){
+  const course=window.DEUTSCH_CURRICULUM;
+  lessons.splice(0,lessons.length,...course.units);
+  roadmap.splice(0,roadmap.length,...course.roadmap);
+  Object.keys(grammarByLesson).forEach(key=>delete grammarByLesson[key]);
+  course.units.forEach(unit=>{
+    const [title,en,fa]=unit.grammar;
+    grammarByLesson[unit.n]={title,explanation:'In dieser Einheit lernst du '+title+'. Lies die Beispiele aufmerksam und achte auf die Satzstellung.',examples:unit.sentences};
+    grammarTranslations[unit.n]={en,fa};
+  });
+}
