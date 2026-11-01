@@ -6,3 +6,5 @@
 .quiz-option.answer-correct,.answer-note.answer-correct,input.answer-correct{border-color:#159947!important;background:#dcfce7!important;color:#14532d!important}.quiz-option.answer-wrong,.answer-note.answer-wrong,input.answer-wrong{border-color:#dc2626!important;background:#fee2e2!important;color:#7f1d1d!important}.answer-note{padding:9px 11px;border:1px solid;border-radius:7px;font-weight:650}.quiz-summary{margin-top:14px;font-weight:650}body[data-theme="dark"] .quiz-option.answer-correct,body[data-theme="dark"] .answer-note.answer-correct{background:#163b2a!important;color:#c5f7d7!important}body[data-theme="dark"] .quiz-option.answer-wrong,body[data-theme="dark"] .answer-note.answer-wrong{background:#481d24!important;color:#ffd5d9!important}
 
 .audio{padding:3px 6px;border-radius:6px;font-size:.85rem}.quiz-fa{margin:.2rem 0 .75rem;color:var(--muted)}
+
+.profile-select{font-weight:650}.profile-select select{margin-left:5px;padding:7px;border-radius:7px;background:#fff;color:#12202e}
