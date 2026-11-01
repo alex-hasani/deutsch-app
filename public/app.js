@@ -39,5 +39,22 @@ function allLearned(){const unlocked=Math.max(current,...(state.completed||[]),1
 function choicesFor(answer,field,pool){const distractors=shuffle(pool.filter(x=>x[field]!==answer[field])).map(x=>x[field]).filter((x,i,a)=>a.indexOf(x)===i).slice(0,3);return shuffle([answer[field],...distractors]);}
 function buildQuiz(){const pool=allLearned();const selected=shuffle(pool).slice(0,Math.min(3,pool.length));return selected.map((word,i)=>{if(i===2){return {q:`Schreibe auf Deutsch: „${word.en}“`,type:'text',correctText:word.de.toLowerCase(),acceptedText:[word.de.toLowerCase()]};}const field=i===0?'en':'de';const target=i===0?word.en:word.de;const options=choicesFor(word,field,pool);return {q:i===0?`Was bedeutet „${word.de}“?`:`Welche deutsche Übersetzung passt zu „${word.en}“?`,type:'single',a:options,correct:[options.indexOf(target)]};});}
 function showQuiz(){const l=lesson();activeQuiz=buildQuiz();$('#quiz').innerHTML=`<article class="card"><h2>Kurzer Check</h2><p class="meta">Zufällige Fragen aus ${allLearned().length} bisher gelernten Wörtern und Sätzen.</p>${activeQuiz.map((q,i)=>`<fieldset data-q="${i}"><legend>${i+1}. ${q.q}</legend>${q.type==='text'?'<input aria-label="Antwort" type="text" autocomplete="off">':q.a.map((a,j)=>`<label class="quiz-option"><input type="radio" name="q${i}" value="${j}"> ${escape(a)}</label>`).join('')}</fieldset>`).join('')}<button class="primary" onclick="submitQuiz()">Antworten prüfen</button><button onclick="showQuiz()">Neue zufällige Fragen</button><div id="feedback"></div></article>`;$('#quiz').scrollIntoView({behavior:'smooth'});}
-async function submitQuiz(){const l=lesson(),quiz=activeQuiz;let ok=0,answers=[];quiz.forEach((q,i)=>{const got=q.type==='text'?[$(`#quiz [data-q="${i}"] input`).value.trim().toLowerCase()]:[...document.querySelectorAll(`#quiz [data-q="${i}"] input:checked`)].map(x=>+x.value);const good=q.type==='text'?(q.acceptedText||[q.correctText]).includes(got[0]):JSON.stringify(got.sort())===JSON.stringify(q.correct);answers.push(good);if(good)ok++});const passed=ok===quiz.length;$('#feedback').innerHTML=`<div class="feedback ${passed?'good':'bad'}">${passed?'Sehr gut! Lektion abgeschlossen.':'Bitte noch einmal ansehen: Frage '+answers.map((good,i)=>good?null:i+1).filter(Boolean).join(', ')+'.'} (${ok}/${quiz.length})</div>`;l.words.forEach((w,i)=>api('/api/review',{id:`${l.n}-${i}`,correct:passed}));if(passed){state=await api('/api/complete',{lesson:l.n});current=Math.min(l.n+1,lessons.length);$('#status').textContent='Fortschritt gespeichert';renderLearn();}}
-
+async function submitQuiz(){
+ const l=lesson(),quiz=activeQuiz;let ok=0;
+ quiz.forEach((q,i)=>{
+  const field=$(`#quiz [data-q="${i}"]`);
+  const got=q.type==='text'?[field.querySelector('input').value.trim().toLowerCase()]:[...field.querySelectorAll('input:checked')].map(x=>+x.value);
+  const good=q.type==='text'?(q.acceptedText||[q.correctText]).includes(got[0]):JSON.stringify(got.sort())===JSON.stringify(q.correct);
+  if(good)ok++;
+  if(q.type==='text'){
+   const input=field.querySelector('input');input.classList.add(good?'answer-correct':'answer-wrong');
+   field.insertAdjacentHTML('beforeend',`<p class="answer-note ${good?'answer-correct':'answer-wrong'}">${good?'Richtig.':'Richtige Antwort: '+escape(q.correctText)}</p>`);
+  }else{
+   field.querySelectorAll('label.quiz-option').forEach((label,j)=>{const selected=label.querySelector('input').checked;if(q.correct.includes(j))label.classList.add('answer-correct');else if(selected)label.classList.add('answer-wrong');});
+  }
+ });
+ const passed=ok===quiz.length;
+ $('#feedback').innerHTML=`<p class="quiz-summary">${passed?'Alle Antworten sind richtig. Lektion abgeschlossen.':`Ergebnis: ${ok}/${quiz.length}. Die richtige Antwort ist grün markiert; eine falsche Auswahl rot.`}</p>`;
+ l.words.forEach((w,i)=>api('/api/review',{id:`${l.n}-${i}`,correct:passed}));
+ if(passed){state=await api('/api/complete',{lesson:l.n});current=Math.min(l.n+1,lessons.length);$('#status').textContent='Fortschritt gespeichert';renderLearn();}
+}
