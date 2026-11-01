@@ -9,3 +9,5 @@
 
 .profile-select{font-weight:650}.profile-select select{margin-left:5px;padding:7px;border-radius:7px;background:#fff;color:#12202e}
 .quiz-modal{position:fixed;inset:0;z-index:1000;background:#0009;display:grid;place-items:center;padding:16px}.quiz-dialog{width:min(760px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--card,#fff);color:var(--ink);border-radius:16px;padding:20px;box-shadow:0 20px 60px #0008}.quiz-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.quiz-dialog-head h2{margin:0}.modal-close{font-size:1.8rem;line-height:1;padding:4px 12px}.quiz-dialog fieldset{margin:16px 0}.quiz-dialog .quiz-option{min-height:48px}@media(max-width:600px){.quiz-modal{padding:0;align-items:end}.quiz-dialog{max-height:92vh;border-radius:16px 16px 0 0;padding:18px}.quiz-dialog fieldset{margin:12px 0}}
+
+.plan-link{background:transparent!important;color:#fff!important;border:1px solid #ffffff66!important;text-decoration:underline}.plan-link:hover{background:#ffffff20!important}
