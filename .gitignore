@@ -1,0 +1,6 @@
+node_modules/
+data/
+scripts/
+server.mjs
+*.ps1
+*.vbs
