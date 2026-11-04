@@ -72,7 +72,7 @@ function speakText(value,lang){const text=decodeURIComponent(value);if(!('speech
 function optionFa(en){const item=lessonItems(lesson()).find(x=>x.en===en);return item?item.fa:''}
 buildQuiz=function(){const items=lessonItems(lesson()),needed=Math.max(1,Math.ceil(items.length*.75)),selected=shuffle(items).slice(0,needed),questions=[];for(let i=0;i<selected.length;i++){const item=selected[i];if(i%4===3){questions.push({type:'text',q:`Schreibe auf Deutsch: „${item.en}“`,fa:item.fa,correctText:item.de.toLowerCase(),acceptedText:[item.de.toLowerCase()],sources:[item]});continue}if(i%4===2&&i+1<selected.length){const pair=selected[++i],wrong=shuffle(items.filter(x=>x.en!==item.en&&x.en!==pair.en)).slice(0,2),opts=shuffle([item,pair,...wrong]);questions.push({type:'multi',q:`Wähle alle richtigen Übersetzungen: „${item.de}“ und „${pair.de}“`,fa:`${item.fa} / ${pair.fa}`,a:opts.map(x=>x.en),correct:opts.map((x,j)=>x===item||x===pair?j:null).filter(x=>x!==null),sources:[item,pair]});continue}const opts=shuffle([item,...shuffle(items.filter(x=>x.en!==item.en)).slice(0,3)]);questions.push({type:'single',q:`Was bedeutet „${item.de}“?`,fa:item.fa,a:opts.map(x=>x.en),correct:[opts.findIndex(x=>x===item)],sources:[item]})}return questions}
 showQuiz=function(){activeQuiz=buildQuiz();$('#quiz').innerHTML=`<article class="card"><h2>Kurzer Check</h2><p class="meta">Zufällig · mindestens 75% dieser Lektion · mehr als 90% zum Weitergehen</p>${activeQuiz.map((q,i)=>`<fieldset data-q="${i}"><legend>${i+1}. ${q.q}</legend>${q.type==='text'?'<input aria-label="Antwort" type="text" autocomplete="off">':q.a.map((a,j)=>`<label class="quiz-option"><input type="${q.type==='multi'?'checkbox':'radio'}" name="q${i}" value="${j}"> ${escape(a)}</label>`).join('')}</fieldset>`).join('')}<button class="primary" onclick="submitQuiz()">Antworten prüfen</button><button onclick="showQuiz()">Neue zufällige Fragen</button><div id="feedback"></div></article>`;$('#quiz').scrollIntoView({behavior:'smooth'})}
-submitQuiz=async function(){const l=lesson(),pending=[];let ok=0;activeQuiz.forEach((q,i)=>{const field=$(`#quiz [data-q="${i}"]`),got=q.type==='text'?[field.querySelector('input').value.trim().toLowerCase()]:[...field.querySelectorAll('input:checked')].map(x=>+x.value),good=q.type==='text'?(q.acceptedText||[q.correctText]).includes(got[0]):JSON.stringify(got.sort())===JSON.stringify(q.correct);if(good)ok++;if(q.type==='text'){const input=field.querySelector('input');input.classList.add(good?'answer-correct':'answer-wrong');field.insertAdjacentHTML('beforeend',`<p class="answer-note ${good?'answer-correct':'answer-wrong'}">${good?'Richtig.':'Richtige Antwort: '+escape(q.correctText)}</p>`)}else{field.querySelectorAll('label.quiz-option').forEach((label,j)=>{if(q.correct.includes(j))label.classList.add('answer-correct');else if(label.querySelector('input').checked)label.classList.add('answer-wrong')})}q.sources.forEach(x=>pending.push(api('/api/review',{id:x.id,correct:good})))});const score=ok/activeQuiz.length,passed=score>.9;await Promise.all(pending);state=await api('/api/lesson-result',{lesson:l.n,score,total:activeQuiz.length,passed});state=await api('/api/state');renderReview();$('#feedback').innerHTML=`<p class="quiz-summary">${Math.round(score*100)}% — ${passed?'Lektion abgeschlossen.':'Mehr als 90% sind nötig; falsche Antworten stehen jetzt unter Wiederholen.'}</p>${passed&&l.n<lessons.length?'<button class="primary" onclick="goNextLesson()">Nächste Lektion</button>':''}`;updateHeader()}
+submitQuiz=async function(){const l=lesson(),pending=[];let ok=0;activeQuiz.forEach((q,i)=>{const field=$(`#quiz [data-q="${i}"]`),got=q.type==='text'?[field.querySelector('input').value.trim().toLowerCase()]:[...field.querySelectorAll('input:checked')].map(x=>+x.value),good=q.type==='text'?(q.acceptedText||[q.correctText]).includes(got[0]):JSON.stringify(got.sort())===JSON.stringify(q.correct);if(good)ok++;if(q.type==='text'){const input=field.querySelector('input');input.classList.add(good?'answer-correct':'answer-wrong');field.insertAdjacentHTML('beforeend',`<p class="answer-note ${good?'answer-correct':'answer-wrong'}">${good?'Richtig.':'Richtige Antwort: '+escape(q.correctText)}</p>`)}else{field.querySelectorAll('label.quiz-option').forEach((label,j)=>{if(q.correct.includes(j))label.classList.add('answer-correct');else if(label.querySelector('input').checked)label.classList.add('answer-wrong')})}field.querySelectorAll('input').forEach(input=>input.disabled=true);q.sources.forEach(x=>pending.push(api('/api/review',{id:x.id,correct:good})))});const score=ok/activeQuiz.length,passed=score>.9;await Promise.all(pending);state=await api('/api/lesson-result',{lesson:l.n,score,total:activeQuiz.length,passed});state=await api('/api/state');renderReview();$('#feedback').innerHTML=`<p class="quiz-summary">${Math.round(score*100)}% — ${passed?'Lektion abgeschlossen.':'Mehr als 90% sind nötig; falsche Antworten stehen jetzt unter Wiederholen.'}</p>${passed&&l.n<lessons.length?'<button class="primary" onclick="goNextLesson()">Nächste Lektion</button>':''}`;updateHeader()}
 function goNextLesson(){current=Math.min(current+1,lessons.length);renderLearn();window.scrollTo({top:0,behavior:'smooth'})}
 renderLearn=function(){const l=lesson(),complete=state.completed.includes(l.n),s=l.sentences||[],audio=(t,lang)=>`<button class="audio" aria-label="Anhören" onclick="speakText('${encodeURIComponent(t)}','${lang}')">🔊</button>`;$('#learn').innerHTML=`<article class="card"><span class="tag">${l.level} · Lektion ${l.n}</span><h2>${l.title}</h2><p>${l.goal}</p><div class="progress"><i style="width:${(state.completed.length/lessons.length)*100}%"></i></div><p class="meta">${state.completed.length}/${lessons.length} abgeschlossen · Quiz: ≥75% Abdeckung, >90% zum Weitergehen.</p><h3>Wörter</h3><table><thead><tr><th>Deutsch</th><th>English</th><th>فارسی</th></tr></thead><tbody>${l.words.map(w=>`<tr><td><strong>${escape(w[0])}</strong> ${audio(w[0],'de-DE')}</td><td>${escape(w[1])} ${audio(w[1],'en-US')}</td><td class="fa">${escape(w[2])}</td></tr>`).join('')}</tbody></table><h3>Sätze mit den neuen Wörtern</h3><table><thead><tr><th>Deutsch</th><th>English</th><th>فارسی</th></tr></thead><tbody>${s.map(w=>`<tr><td><strong>${escape(w[0])}</strong> ${audio(w[0],'de-DE')}</td><td>${escape(w[1])} ${audio(w[1],'en-US')}</td><td class="fa">${escape(w[2])}</td></tr>`).join('')}</tbody></table><button class="primary" onclick="showQuiz()">${complete?'Quiz erneut machen':'Zum Quiz'}</button></article><div id="quiz"></div>`}
 
@@ -84,7 +84,7 @@ async function switchProfile(){activeProfile=$('#profileSelect').value;localStor
 (function(){const select=$('#profileSelect');if(select){select.value=activeProfile;select.onchange=switchProfile;switchProfile()}})();
 
 const grammarByLesson={
-1:{title:'Personalpronomen und sein',explanation:'Du lernst die Personalpronomen ich und du sowie die wichtigsten Formen von sein. Damit kannst du dich vorstellen und einfache Informationen geben.',examples:[['Ich bin Anna.','I am Anna.','من آنا هستم.'],['Du bist hier.','You are here.','تو اینجا هستی.'],['Wer bist du?','Who are you?','تو چه کسی هستی؟']]},
+1:{title:'Personalpronomen und sein',explanation:'Du lernst die Personalpronomen ich und du sowie die wichtigsten Formen von sein. Damit kannst du dich vorstellen und einfache Informationen geben.',examples:[['Ich bin Learner 1.','I am Learner 1.','من الکس هستم.'],['Du bist hier.','You are here.','تو اینجا هستی.'],['Wer bist du?','Who are you?','تو چه کسی هستی؟']]},
 2:{title:'Der, die, das und einfache Sätze',explanation:'Nomen haben ein grammatisches Geschlecht. In einfachen Hauptsätzen steht das Verb normalerweise an zweiter Stelle.',examples:[['Die Mutter arbeitet zu Hause.','The mother works at home.','مادر در خانه کار می‌کند.'],['Der Vater trinkt Wasser.','The father drinks water.','پدر آب می‌نوشد.'],['Das Kind lernt Deutsch.','The child learns German.','کودک آلمانی یاد می‌گیرد.']]},
 3:{title:'Zeitangaben und weil',explanation:'Zeitwörter wie gestern und morgen ordnen Ereignisse ein. Nach weil steht das Verb am Ende des Nebensatzes.',examples:[['Morgen reise ich nach Berlin.','Tomorrow I travel to Berlin.','فردا به برلین سفر می‌کنم.'],['Ich bleibe zu Hause, weil ich krank bin.','I stay at home because I am ill.','در خانه می‌مانم چون بیمار هستم.'],['Gestern habe ich Hilfe gebraucht.','Yesterday I needed help.','دیروز به کمک نیاز داشتم.']]},
 4:{title:'Meinung ausdrücken und obwohl',explanation:'Mit Meiner Meinung nach formulierst du eine begründete Position. Obwohl leitet einen Gegensatz ein; das Verb steht am Ende des Nebensatzes.',examples:[['Meiner Meinung nach ist Erfahrung wichtig.','In my opinion, experience is important.','به نظر من تجربه مهم است.'],['Obwohl es schwierig ist, verbessere ich mich.','Although it is difficult, I improve.','با اینکه سخت است، پیشرفت می‌کنم.'],['Ich erkläre, warum ich so entscheide.','I explain why I decide that way.','توضیح می‌دهم چرا این‌گونه تصمیم می‌گیرم.']]},
@@ -109,6 +109,20 @@ renderLearn=function(){const l=lesson(),complete=state.completed.includes(l.n),s
 function closeRoadmap(){const modal=$('#roadmapModal');if(modal)modal.remove()}
 openRoadmap=function(){closeRoadmap();document.body.insertAdjacentHTML('beforeend',`<div id="roadmapModal" class="quiz-modal" role="dialog" aria-modal="true" aria-labelledby="roadmapTitle"><div class="quiz-dialog"><div class="quiz-dialog-head"><h2 id="roadmapTitle">Endlicher Lernplan</h2><button class="modal-close" aria-label="Lernplan schließen" onclick="closeRoadmap()">×</button></div><p>Ein klarer Weg von A1 bis C1, danach Sätze und Gespräche.</p><ol class="roadmap">${roadmap.map(r=>`<li><strong>${r[0]}</strong><br><span class="meta">${r[1]}</span></li>`).join('')}</ol></div></div>`)}
 
+let videoCatalog=[];
+async function renderVideos(){const host=$('#videos');host.innerHTML='<article class="card"><h2>Video-Bibliothek</h2><p class="meta">Lade Videos aus Deutschkurs …</p></article>';try{videoCatalog=await api('/api/videos');showVideoList(videoCatalog)}catch(error){host.innerHTML=`<article class="card"><h2>Video-Bibliothek</h2><p>Videos konnten nicht geladen werden.</p></article>`}}
+function showVideoList(items){const host=$('#videos');host.innerHTML=`<article class="card"><h2>Video-Bibliothek</h2><input class="video-search" placeholder="Videos durchsuchen" oninput="filterVideos(this.value)"><p class="meta">${items.length} Videos · Quelle: Deutschkurs</p><div class="video-list">${items.slice(0,250).map(v=>`<button class="video-item" onclick="playVideo('${encodeURIComponent(v.path)}','${escape(v.name).replace(/'/g,'&#39;')}')">▶ <span>${escape(v.name)}</span></button>`).join('')}</div></article>`}
+function filterVideos(value){const needle=value.toLowerCase();showVideoList(videoCatalog.filter(v=>v.name.toLowerCase().includes(needle)))}
+function playVideo(encoded,title){const path=decodeURIComponent(encoded);const old=$('#videoModal');if(old)old.remove();document.body.insertAdjacentHTML('beforeend',`<div id="videoModal" class="quiz-modal" role="dialog" aria-modal="true"><div class="quiz-dialog video-dialog"><div class="quiz-dialog-head"><h2>${title}</h2><button class="modal-close" onclick="document.querySelector('#videoModal').remove()">×</button></div><video controls autoplay playsinline src="/api/video?file=${encodeURIComponent(path)}"></video></div></div>`)}
+const existingNavHandler=document.querySelectorAll('nav button');existingNavHandler.forEach(button=>{if(button.dataset.view==='videos')button.onclick=()=>{document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));$('#videos').classList.remove('hidden');button.classList.add('active');renderVideos()}});
+
+let videoFolder='';
+renderVideos=async function(folder=''){videoFolder=folder;const host=$('#videos');host.innerHTML='<article class="card"><h2>Video-Bibliothek</h2><p class="meta">Lade Ordner …</p></article>';try{const entries=await api('/api/video-folder?folder='+encodeURIComponent(folder));const crumbs=folder?folder.split('/'):[];host.innerHTML=`<article class="card"><h2>Video-Bibliothek</h2><p class="video-path">Deutschkurs${crumbs.length?' › '+escape(folder):''}</p>${folder?'<button onclick="openVideoFolder(videoFolder.split(\'/\').slice(0,-1).join(\'/\'))">← Übergeordneter Ordner</button>':''}<div class="video-list">${entries.map(e=>e.type==='folder'?`<button class="video-item folder-item" onclick="openVideoFolder('${encodeURIComponent(e.path)}')">📁 <span>${escape(e.name)}</span></button>`:`<button class="video-item" onclick="playVideo('${encodeURIComponent(e.path)}','${escape(e.name).replace(/'/g,'&#39;')}')">▶ <span>${escape(e.name)}</span></button>`).join('')||'<p>Keine Videos in diesem Ordner.</p>'}</div></article>`}catch(error){host.innerHTML='<article class="card"><h2>Video-Bibliothek</h2><p>Videos konnten nicht geladen werden.</p></article>'}}
+function openVideoFolder(encoded){renderVideos(decodeURIComponent(encoded))}
+playVideo=async function(encoded,title){const path=decodeURIComponent(encoded),old=$('#videoModal');if(old)old.remove();const progress=await api('/api/video-progress');const saved=progress[path]||{};document.body.insertAdjacentHTML('beforeend',`<div id="videoModal" class="quiz-modal" role="dialog" aria-modal="true"><div class="quiz-dialog video-dialog"><div class="quiz-dialog-head"><h2>${title}</h2><button class="modal-close" onclick="closeVideoPlayer()" aria-label="Video schließen">×</button></div><div id="coursePlayer" class="course-player"><video id="courseVideo" controls autoplay playsinline src="/api/video?file=${encodeURIComponent(path)}"></video><div class="video-skip-controls" aria-label="Video-Navigation"><button type="button" onclick="seekCourseVideo(-10)" aria-label="10 Sekunden zurück">↶ <span>10 Sek.</span></button><button type="button" onclick="seekCourseVideo(10)" aria-label="10 Sekunden vor">↷ <span>10 Sek.</span></button><button type="button" class="video-fullscreen" onclick="toggleCourseFullscreen()" aria-label="Video im Vollbild öffnen">⛶ <span>Vollbild</span></button></div></div><p class="meta">Der Fortschritt wird automatisch nur für dein aktuelles Profil gespeichert.</p></div></div>`);const video=$('#courseVideo');let last=0;video.addEventListener('loadedmetadata',()=>{if(saved.position&&saved.position<video.duration-5)video.currentTime=saved.position});video.addEventListener('timeupdate',()=>{if(video.currentTime-last>=10){last=video.currentTime;api('/api/video-progress',{path,position:video.currentTime,duration:video.duration})}});video.addEventListener('ended',()=>api('/api/video-progress',{path,position:0,duration:video.duration}))}
+function seekCourseVideo(seconds){const video=$('#courseVideo');if(!video)return;const duration=Number.isFinite(video.duration)?video.duration:Infinity;video.currentTime=Math.max(0,Math.min(duration,video.currentTime+seconds));}
+async function toggleCourseFullscreen(){const player=$('#coursePlayer');if(!player)return;const active=document.fullscreenElement||document.webkitFullscreenElement;if(active){const exit=document.exitFullscreen||document.webkitExitFullscreen;if(exit)await exit.call(document);return}const open=player.requestFullscreen||player.webkitRequestFullscreen;if(open)await open.call(player);}
+function closeVideoPlayer(){const video=$('#courseVideo');if(video){const src=new URL(video.src);const path=decodeURIComponent(src.searchParams.get('file')||'');api('/api/video-progress',{path,position:video.currentTime,duration:video.duration})}const modal=$('#videoModal');if(modal)modal.remove()}
 
 const grammarTranslations={
 1:{en:'Learn ich and du, and the most important forms of sein. Use them to introduce yourself and give simple information.',fa:'ضمیرهای ich و du و مهم‌ترین شکل‌های فعل sein را یاد می‌گیری. با آن‌ها می‌توانی خودت را معرفی کنی و اطلاعات ساده بدهی.'},
@@ -128,6 +142,79 @@ Object.assign(grammarByLesson[6],{examples:[...grammarByLesson[6].examples,['Die
 Object.assign(grammarByLesson[7],{examples:[...grammarByLesson[7].examples,['Könnten Sie bitte langsamer sprechen?','Could you please speak more slowly?','ممکن است لطفاً آهسته‌تر صحبت کنید؟'],['Ich würde gern mehr wissen.','I would like to know more.','مایلم بیشتر بدانم.']]});
 renderGrammar=function(){const g=grammarByLesson[current]||grammarByLesson[1],t=grammarTranslations[current]||grammarTranslations[1];$('#grammar').innerHTML=`<article class="card"><span class="tag">${lesson().level} · Grammatik zu Lektion ${current}</span><h2>${g.title}</h2><div class="grammar-explanation"><p><strong>Deutsch</strong><br>${escape(g.explanation)}</p><p><strong>English</strong><br>${escape(t.en)}</p><p class="fa"><strong>فارسی</strong><br>${escape(t.fa)}</p></div><h3>Beispiele</h3><table><thead><tr><th>Deutsch</th><th>English</th><th>فارسی</th></tr></thead><tbody>${g.examples.map(x=>`<tr><td><strong>${escape(x[0])}</strong> <button class="audio" onclick="speakText('${encodeURIComponent(x[0])}','de-DE')">🔊</button></td><td>${escape(x[1])} <button class="audio" onclick="speakText('${encodeURIComponent(x[1])}','en-US')">🔊</button></td><td class="fa">${escape(x[2])}</td></tr>`).join('')}</tbody></table><div class="grammar-explanation grammar-note"><p><strong>Deutsch</strong><br>Diese Grammatik gehört nur zur aktuellen Lektion.</p><p><strong>English</strong><br>This grammar belongs only to the current lesson.</p><p class="fa"><strong>فارسی</strong><br>این گرامر فقط مربوط به درس فعلی است.</p></div></article>`}
 
+
+// Keep review state complete after one review action, so only the answered item disappears.
+review=async function(id,correct){
+  await api('/api/review',{id,correct});
+  state=await api('/api/state');
+  renderReview();
+  updateHeader();
+};
+
+function openCurrentGrammar(){
+  closeQuiz();
+  document.querySelectorAll('.view').forEach(view=>view.classList.add('hidden'));
+  document.querySelectorAll('nav button').forEach(button=>button.classList.remove('active'));
+  $('#grammar').classList.remove('hidden');
+  const grammarButton=[...document.querySelectorAll('nav button')].find(button=>button.dataset.view==='grammar');
+  if(grammarButton)grammarButton.classList.add('active');
+  renderGrammar();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function completeGrammarAndNext(){
+  if(!state.completed.includes(current))return;
+  current=Math.min(current+1,lessons.length);
+  document.querySelectorAll('.view').forEach(view=>view.classList.add('hidden'));
+  document.querySelectorAll('nav button').forEach(button=>button.classList.remove('active'));
+  $('#learn').classList.remove('hidden');
+  const learnButton=[...document.querySelectorAll('nav button')].find(button=>button.dataset.view==='learn');
+  if(learnButton)learnButton.classList.add('active');
+  renderLearn();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+const renderGrammarWithLessonHandoff=renderGrammar;
+renderGrammar=function(){
+  renderGrammarWithLessonHandoff();
+  const article=$('#grammar article');
+  if(!article)return;
+  if(state.completed.includes(current)&&current<lessons.length){
+    article.insertAdjacentHTML('beforeend','<div class="grammar-next"><h3>Grammatik gelernt?</h3><p>Wenn du die Beispiele verstanden hast, fahre mit der nächsten Lektion fort.</p><button class="primary" onclick="completeGrammarAndNext()">Grammatik gelernt – nächste Lektion</button></div>');
+  }else if(state.completed.includes(current)){
+    article.insertAdjacentHTML('beforeend','<div class="grammar-next"><p>Du hast auch die Grammatik der letzten Lektion abgeschlossen.</p></div>');
+  }
+};
+
+submitQuiz=async function(){
+  const l=lesson(),pending=[];let ok=0;
+  activeQuiz.forEach((q,i)=>{
+    const field=$(`#quiz [data-q="${i}"]`);
+    const got=q.type==='text'?[field.querySelector('input').value.trim().toLowerCase()]:[...field.querySelectorAll('input:checked')].map(input=>+input.value);
+    const good=q.type==='text'?(q.acceptedText||[q.correctText]).includes(got[0]):JSON.stringify(got.sort())===JSON.stringify(q.correct);
+    if(good)ok++;
+    if(q.type==='text'){
+      const input=field.querySelector('input');
+      input.classList.add(good?'answer-correct':'answer-wrong');
+      field.insertAdjacentHTML('beforeend',`<p class="answer-note ${good?'answer-correct':'answer-wrong'}">${good?'Richtig.':'Richtige Antwort: '+escape(q.correctText)}</p>`);
+    }else{
+      field.querySelectorAll('label.quiz-option').forEach((label,j)=>{
+        if(q.correct.includes(j))label.classList.add('answer-correct');
+        else if(label.querySelector('input').checked)label.classList.add('answer-wrong');
+      });
+    }
+    field.querySelectorAll('input').forEach(input=>input.disabled=true);
+    q.sources.forEach(source=>pending.push(api('/api/review',{id:source.id,correct:good})));
+  });
+  const score=ok/activeQuiz.length,passed=score>.9;
+  await Promise.all(pending);
+  await api('/api/lesson-result',{lesson:l.n,score,total:activeQuiz.length,passed});
+  state=await api('/api/state');
+  renderReview();
+  $('#feedback').innerHTML=`<p class="quiz-summary">${Math.round(score*100)}% — ${passed?'Lektion abgeschlossen. Wiederhole jetzt die Grammatik dieser Lektion.':'Mehr als 90% sind nötig; falsche Antworten stehen jetzt unter Wiederholen.'}</p>${passed?'<button class="primary" onclick="openCurrentGrammar()">Grammatik zu dieser Lektion</button>':''}`;
+  updateHeader();
+};
+
 // Load the expanded original course without changing the app's screens or interactions.
 if(window.DEUTSCH_CURRICULUM){
   const course=window.DEUTSCH_CURRICULUM;
@@ -139,4 +226,43 @@ if(window.DEUTSCH_CURRICULUM){
     grammarByLesson[unit.n]={title,explanation:'In dieser Einheit lernst du '+title+'. Lies die Beispiele aufmerksam und achte auf die Satzstellung.',examples:unit.sentences};
     grammarTranslations[unit.n]={en,fa};
   });
+}
+
+// Integrate supplied source vocabularies into normal-sized, level-specific lessons.
+if(window.DEUTSCH_CURRICULUM&&window.IMPORTED_VOCABULARY){
+  const sequence=['A1','A2','B1','B2','C1'];
+  const imported=window.IMPORTED_VOCABULARY;
+  const extras=[];
+  const groupKey=item=>`${item.level}|${item.source}`;
+  sequence.forEach(level=>{
+    extras.push(...window.DEUTSCH_CURRICULUM.units.filter(unit=>unit.level===level));
+    const groups={};
+    imported.filter(item=>item.level===level).forEach(item=>(groups[groupKey(item)]??=[]).push(item));
+    Object.entries(groups).forEach(([key,items])=>{
+      const [,source]=key.split('|');
+      const words=items.filter(item=>item.kind==='word');
+      const phrases=items.filter(item=>item.kind==='phrase');
+      for(let offset=0,part=1;offset<words.length;offset+=12,part++){
+        const batch=words.slice(offset,offset+12);
+        const sentenceBatch=phrases.slice((part-1)*3,part*3);
+        extras.push({
+          level,
+          title:`${level} · Zusatzwortschatz ${part}`,
+          goal:`Quellenbasierter Wortschatz: ${source}.`,
+          grammar:['Wortschatz festigen','Review the words and expressions in this set, then use them in a short context.','واژه‌ها و عبارت‌های این بخش را مرور کن و سپس آن‌ها را در یک بافت کوتاه به کار ببر.'],
+          words:batch.map(item=>[item.de,item.en||'—',item.fa||'—']),
+          sentences:sentenceBatch.map(item=>[item.de,item.en||'—',item.fa||'—'])
+        });
+      }
+    });
+  });
+  extras.forEach((unit,index)=>unit.n=index+1);
+  lessons.splice(0,lessons.length,...extras);
+  Object.keys(grammarByLesson).forEach(key=>delete grammarByLesson[key]);
+  extras.forEach(unit=>{
+    const [title,en,fa]=unit.grammar;
+    grammarByLesson[unit.n]={title,explanation:'In dieser Einheit lernst du '+title+'. Lies die Beispiele aufmerksam und achte auf die Satzstellung.',examples:unit.sentences.length?unit.sentences:[[unit.title,'Vocabulary review','مرور واژگان']]};
+    grammarTranslations[unit.n]={en,fa};
+  });
+  roadmap.splice(0,roadmap.length,...sequence.map(level=>[level,`${extras.filter(unit=>unit.level===level).length} Lektionen · Kernkurs und zusätzlicher Wortschatz aus deinen Quellen`]));
 }
